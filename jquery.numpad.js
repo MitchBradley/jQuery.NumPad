@@ -53,12 +53,50 @@
 				nmpd = $('<div id="' + id + '"></div>').addClass('nmpd-wrapper');
 				nmpd.options = options;
 				/** @var display jQuery object representing the display of the numpad (typically an input field) */
-				var display = $(options.displayTpl).addClass('nmpd-display');
-				nmpd.display = display;
+				nmpd.s0 =  $(options.displayTpl).addClass('nmpd-display');
+				nmpd.s1 =  $(options.displayTpl).addClass('nmpd-display');
+				nmpd.s2 =  $(options.displayTpl).addClass('nmpd-display');
+				nmpd.display = $(options.displayTpl).addClass('nmpd-display');
+				nmpd.autopush = 0;
 				/** @var grid jQuery object containing the grid for the numpad: the display, the buttons, etc. */
 				var table = $(options.gridTpl).addClass('nmpd-grid');
 				nmpd.grid = table;
-				table.append($(options.rowTpl).append($(options.displayCellTpl).append(display).append($('<input type="hidden" class="dirty" value="0"></input>'))));
+				table.append($(options.rowTpl)
+					     .append($(options.displayCellTpl).append(nmpd.s2).append($('<input type="hidden" class="dirty" value="0"></input>')))
+					     .append($(options.cellTpl).append($(options.buttonFunctionTpl).html('Roll').addClass('roll').click(function(){
+						 nmpd.roll();
+					     })))
+					     .append($(options.cellTpl).append($(options.buttonFunctionTpl).html('SIN').addClass('sin').click(function(){
+						 nmpd.sin();
+					     })))
+					    );
+				table.append($(options.rowTpl)
+					     .append($(options.displayCellTpl).append(nmpd.s1).append($('<input type="hidden" class="dirty" value="0"></input>')))
+					     .append($(options.cellTpl).append($(options.buttonFunctionTpl).html('Drop').addClass('drop').click(function(){
+						 nmpd.drop();
+					     })))
+					     .append($(options.cellTpl).append($(options.buttonFunctionTpl).html('COS').addClass('cos').click(function(){
+						 nmpd.cos();
+					     })))
+					    );
+				table.append($(options.rowTpl)
+					     .append($(options.displayCellTpl).append(nmpd.s0).append($('<input type="hidden" class="dirty" value="0"></input>')))
+					     .append($(options.cellTpl).append($(options.buttonFunctionTpl).html('Swap').addClass('swap').click(function(){
+						 nmpd.swap();
+					     })))
+					     .append($(options.cellTpl).append($(options.buttonFunctionTpl).html('TAN').addClass('tan').click(function(){
+						 nmpd.tan();
+					     })))
+					    );
+				table.append($(options.rowTpl)
+					     .append($(options.displayCellTpl).append(nmpd.display).append($('<input type="hidden" class="dirty" value="0"></input>')))
+					     .append($(options.cellTpl).append($(options.buttonFunctionTpl).html('Enter').addClass('enter').click(function(){
+						 nmpd.push();
+					     })))
+					     .append($(options.cellTpl).append($(options.buttonFunctionTpl).html('SQRT').addClass('sqrt').click(function(){
+						 nmpd.sqrt();
+					     })))
+					    );
 				// Create rows and columns of the the grid with appropriate buttons
 				table.append(
 					$(options.rowTpl)
@@ -68,6 +106,9 @@
 						.append($(options.cellTpl).append($(options.buttonFunctionTpl).html(options.textDelete).addClass('del').click(function(){
 							nmpd.setValue(nmpd.getValue().toString().substring(0,nmpd.getValue().toString().length - 1));
 						})))
+						.append($(options.cellTpl).append($(options.buttonFunctionTpl).html('+').addClass('plus').click(function(){
+							nmpd.plus();
+						})))
 					).append(
 					$(options.rowTpl)
 						.append($(options.cellTpl).append($(options.buttonNumberTpl).html(4).addClass('numero')))
@@ -76,6 +117,10 @@
 						.append($(options.cellTpl).append($(options.buttonFunctionTpl).html(options.textClear).addClass('clear').click(function(){
 							nmpd.setValue('');
 						})))
+						.append($(options.cellTpl).append($(options.buttonFunctionTpl).html('-').addClass('minus').click(function(){
+							nmpd.minus();
+						})))
+
 					).append(
 					$(options.rowTpl)
 						.append($(options.cellTpl).append($(options.buttonNumberTpl).html(1).addClass('numero')))
@@ -83,6 +128,9 @@
 						.append($(options.cellTpl).append($(options.buttonNumberTpl).html(3).addClass('numero')))
 						.append($(options.cellTpl).append($(options.buttonFunctionTpl).html(options.textCancel).addClass('cancel').click(function(){
 							nmpd.close(false);
+						})))
+						.append($(options.cellTpl).append($(options.buttonFunctionTpl).html('*').addClass('times').click(function(){
+							nmpd.times();
 						})))
 					).append(
 					$(options.rowTpl)
@@ -94,6 +142,9 @@
 							nmpd.setValue(nmpd.getValue().toString() + options.decimalSeparator);
 						})))
 						.append($(options.cellTpl).append($(options.buttonFunctionTpl).html(options.textDone).addClass('done')))
+						.append($(options.cellTpl).append($(options.buttonFunctionTpl).html('/').addClass('divide').click(function(){
+							nmpd.divide();
+						})))
 					);
 				// Create the backdrop of the numpad - an overlay for the main page
 				nmpd.append($(options.backgroundTpl).addClass('nmpd-overlay').click(function(){nmpd.close(false);}));
@@ -163,18 +214,190 @@
 			};
 			
 			/**
+			* Sets all the dirty bits to 0 so the next number will overwrite the display
+			*/
+			nmpd.clean = function(){
+				nmpd.find('.dirty').val('0');
+			};
+
+			/**
 			* Sets the display value of the numpad
 			* @param string value
 			* @return jQuery object nmpd
 			*/
 			nmpd.setValue = function(value){
 				if (nmpd.display.attr('maxLength') < value.toString().length) value = value.toString().substr(0, nmpd.display.attr('maxLength'));
+				if (nmpd.autopush) {
+					nmpd.autopush = 0;
+					nmpd.push();
+				}
 				nmpd.display.val(value);
 				nmpd.find('.dirty').val('1');
 				nmpd.trigger('numpad.change', [value]);
 				return nmpd;
 			};
 			
+			/**
+			* Push the display value onto the stack
+			* @return jQuery object nmpd
+			*/
+			nmpd.push = function(){
+				nmpd.s2.val(nmpd.s1.val());
+				nmpd.s1.val(nmpd.s0.val());
+				nmpd.s0.val(nmpd.getValue());
+				nmpd.clean();
+				return nmpd;
+			};
+
+			/**
+			* Pop the stack
+			* @return the previous top of stack
+			*/
+			nmpd.pop = function(){
+				var ret = nmpd.s0.val();
+				nmpd.s0.val(nmpd.s1.val());
+				nmpd.s1.val(nmpd.s2.val());
+				// nmpd.s2.val('');  // Last on stack duplicates on pop
+				return ret;
+			}
+
+			/**
+			* Rotate the stack through the display value
+			* @return jQuery object nmpd
+			*/
+			nmpd.roll = function(){
+				var tmp = nmpd.getValue();
+				nmpd.drop();
+				nmpd.s2.val(tmp);
+				return nmpd;
+			}
+
+			/**
+			* Exchange the top of the stack with the display value
+			* @return jQuery object nmpd
+			*/
+			nmpd.swap = function(){
+				var tmp = nmpd.s0.val();
+				nmpd.s0.val(nmpd.getValue());
+				nmpd.autopush = 0;
+				nmpd.setValue(tmp);
+				nmpd.clean();
+				nmpd.autopush = 1;
+				return nmpd;
+			}
+
+			/**
+			* Pop the stack into the display value
+			* @return jQuery object nmpd
+			*/
+			nmpd.drop = function(){
+				nmpd.autopush = 0;
+				nmpd.setValue(nmpd.pop());
+				nmpd.clean();
+				nmpd.autopush = 1;
+				return nmpd;
+			}
+
+			/**
+			* Round to the indicated precision
+			* @param number to round
+			* @param number of postdecimal digits
+			* @return jQuery object nmpd
+			*/
+			nmpd.round = function(number, precision) {
+				var shift = function (number, exponent) {
+					var numArray = ("" + number).split("e");
+					return +(numArray[0] + "e" + (numArray[1] ? (+numArray[1] + exponent) : exponent));
+				};
+				return shift(Math.round(shift(number, +precision)), -precision);
+			}
+
+			/**
+			* Set the display value to the given value and arrange for the next number to push
+			* @param value
+			* @return jQuery object nmpd
+			*/
+			nmpd.calcValue = function(value) {
+				nmpd.autopush = 0;
+				nmpd.setValue(nmpd.round(value, nmpd.options.precision));
+				nmpd.clean();
+				nmpd.autopush = 1;
+				return nmpd;
+			};
+
+			/**
+			* Convert degrees to radians
+			* @param degrees
+			* @return radians
+			*/
+			nmpd.radians = function() {
+				return Number(nmpd.getValue()) / 180. * Math.PI;
+			}
+
+			/**
+			* Replace the display value with its square root
+			* @return jQuery object nmpd
+			*/
+			nmpd.sqrt = function(){
+				return nmpd.calcValue(Math.sqrt(nmpd.getValue()));
+			};
+
+			/**
+			* Replace the display value (in degrees) with its cosine
+			* @return jQuery object nmpd
+			*/
+			nmpd.cos = function(){
+				return nmpd.calcValue(Math.cos(nmpd.radians()));
+			};
+
+			/**
+			* Replace the display value (in degrees) with its sine
+			* @return jQuery object nmpd
+			*/
+			nmpd.sin = function(){
+				return nmpd.calcValue(Math.sin(nmpd.radians()));
+			};
+
+			/**
+			* Replace the display value (in degrees) with its tangent
+			* @return jQuery object nmpd
+			*/
+			nmpd.tan = function(){
+				return nmpd.calcValue(Math.tan(nmpd.radians()));
+			};
+
+			/**
+			* Add the display value to the top of the stack
+			* @return jQuery object nmpd
+			*/
+			nmpd.plus = function(){
+				return nmpd.calcValue(Number(nmpd.pop()) + Number(nmpd.getValue()));
+			};
+
+			/**
+			* Subtract the display value from the top of the stack
+			* @return jQuery object nmpd
+			*/
+			nmpd.minus = function(){
+			    return nmpd.calcValue(Number(nmpd.pop()) - Number(nmpd.getValue()));
+			};
+
+			/**
+			* Multiply the display value by the top of the stack
+			* @return jQuery object nmpd
+			*/
+			nmpd.times = function(){
+				return nmpd.calcValue(Number(nmpd.pop()) * Number(nmpd.getValue()));
+			};
+
+			/**
+			* Divide the display value by the top of the stack
+			* @return jQuery object nmpd
+			*/
+			nmpd.divide = function(){
+				return nmpd.calcValue(Number(nmpd.pop()) / Number(nmpd.getValue()));
+			};
+
 			/**
 			* Closes the numpad writing it's value to the given target element
 			* @param jQuery object target
@@ -277,7 +500,7 @@
 		backgroundTpl: '<div></div>',
 		gridTpl: '<table></table>',
 		displayTpl: '<input type="text" />',
-		displayCellTpl: '<td colspan="4"></td>',
+		displayCellTpl: '<td colspan="3"></td>',
 		rowTpl: '<tr></tr>',
 		cellTpl: '<td></td>',
 		buttonNumberTpl: '<button></button>',
@@ -290,7 +513,7 @@
 		textClear: 'Clear',
 		textCancel: 'Cancel',
 		decimalSeparator: ',',
-		precision: null,
+		precision: 4,
 		appendKeypadTo: false,
 		position: 'fixed',
 		positionX: 'center',
